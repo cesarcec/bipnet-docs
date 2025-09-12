@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gestor de Documentos</title>
+    <style>
+      * { box-sizing: border-box; }
+      body { 
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+        margin: 0; padding: 20px; 
+        min-height: 100vh;
+        position: relative;
+        overflow-x: hidden;
+      }
+      
+      /* Video Background */
+      .video-background {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: -2;
+        object-fit: cover;
+      }
+      
+      .video-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, rgba(9, 0, 64, 0.7) 0%, rgba(71, 19, 150, 0.7) 100%);
+        z-index: -1;
+      }
+      .container { max-width: 1200px; margin: 0 auto; }
+      .card { 
+        background: white; 
+        border-radius: 12px; 
+        padding: 24px; 
+        margin-bottom: 20px; 
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        border: none;
+      }
+      .card h3 { 
+        margin-top: 0; 
+        color: #090040; 
+        border-bottom: 2px solid #FFCC00; 
+        padding-bottom: 10px;
+      }
+      .row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+      .row > div { flex: 1 1 250px; }
+      label { 
+        display: block; 
+        font-weight: 600; 
+        color: #555; 
+        margin-bottom: 6px;
+      }
+      input, select, textarea { 
+        width: 100%; 
+        padding: 12px; 
+        border: 2px solid #e1e5e9; 
+        border-radius: 8px; 
+        font-size: 14px;
+        transition: border-color 0.3s;
+      }
+      input:focus, select:focus, textarea:focus {
+        outline: none;
+        border-color: #B13BFF;
+        box-shadow: 0 0 0 3px rgba(177, 59, 255, 0.15);
+      }
+      button { 
+        background: linear-gradient(135deg, #B13BFF 0%, #471396 100%);
+        color: white; 
+        border: none; 
+        padding: 12px 24px; 
+        border-radius: 8px; 
+        cursor: pointer; 
+        font-size: 14px;
+        font-weight: 600;
+        transition: transform 0.2s, box-shadow 0.2s;
+      }
+      button:hover { 
+        transform: translateY(-2px); 
+        box-shadow: 0 4px 12px rgba(177, 59, 255, 0.35);
+      }
+      button:active { transform: translateY(0); }
+      .btn-danger {
+        background: linear-gradient(135deg, #ff4757 0%, #ff3742 100%);
+        padding: 8px 16px;
+        font-size: 12px;
+      }
+      .btn-danger:hover {
+        box-shadow: 0 4px 12px rgba(255, 71, 87, 0.4);
+      }
+      #dropzone { 
+        border: 3px dashed #B13BFF; 
+        border-radius: 12px; 
+        padding: 40px; 
+        text-align: center; 
+        color: #B13BFF; 
+        background: #f4f0ff;
+        cursor: pointer;
+        transition: all 0.3s;
+      }
+      #dropzone:hover, #dropzone.dragover {
+        background: #efe6ff;
+        border-color: #471396;
+      }
+      #fileList { 
+        margin-top: 16px; 
+        font-size: 14px; 
+        color: #666;
+        background: #f8f9fa;
+        padding: 12px;
+        border-radius: 8px;
+        white-space: pre-line;
+      }
+      .hidden { display: none; }
+      table { 
+        width: 100%; 
+        border-collapse: collapse; 
+        margin-top: 16px;
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+      th, td { 
+        padding: 12px; 
+        text-align: left;
+        border-bottom: 1px solid #e1e5e9;
+      }
+      th { 
+        background: linear-gradient(135deg, #090040 0%, #471396 100%);
+        color: white; 
+        font-weight: 600;
+      }
+      tr:hover { background: #f7f3ff; }
+      .msg { 
+        padding: 12px; 
+        border-radius: 8px; 
+        margin-top: 12px; 
+        font-weight: 500;
+      }
+      .msg.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+      .msg.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+      .file-link { 
+        color: #471396; 
+        text-decoration: none; 
+        font-weight: 500;
+      }
+      .file-link:hover { text-decoration: underline; }
+      .actions { display: flex; gap: 8px; align-items: center; }
+      .loading { opacity: 0.6; pointer-events: none; }
+      .logout-btn {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: linear-gradient(135deg, #ff4757 0%, #ff3742 100%);
+        color: white;
+        border: none;
+        padding: 10px 16px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+        box-shadow: 0 2px 8px rgba(255, 71, 87, 0.3);
+        transition: all 0.3s;
+        z-index: 1000;
+      }
+      .logout-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(255, 71, 87, 0.4);
+      }
+      
+      /* Login Card Styles */
+      #loginCard {
+        max-width: 400px;
+        margin: 50px auto;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+      }
+      
+      #loginCard::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #B13BFF 0%, #FFCC00 50%, #B13BFF 100%);
+      }
+      
+      #loginCard h3 {
+        font-size: 2em;
+        margin-bottom: 30px;
+        background: linear-gradient(135deg, #B13BFF 0%, #471396 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+      
+      .login-form {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+      
+      .input-group {
+        position: relative;
+        text-align: left;
+      }
+      
+      .input-group label {
+        position: absolute;
+        top: -8px;
+        left: 12px;
+        background: white;
+        padding: 0 8px;
+        font-size: 12px;
+        font-weight: 600;
+        color: #471396;
+        z-index: 1;
+      }
+      
+      .input-group input {
+        width: 100%;
+        padding: 16px 12px 12px 12px;
+        border: 2px solid #e1e5e9;
+        border-radius: 8px;
+        font-size: 16px;
+        transition: all 0.3s;
+        background: #fafafa;
+      }
+      
+      .input-group input:focus {
+        background: white;
+        border-color: #B13BFF;
+        box-shadow: 0 0 0 3px rgba(177, 59, 255, 0.1);
+        transform: translateY(-2px);
+      }
+      
+      .login-btn {
+        width: 100%;
+        padding: 16px;
+        font-size: 16px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        margin-top: 10px;
+        position: relative;
+        overflow: hidden;
+      }
+      
+      .login-btn::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+        transition: left 0.5s;
+      }
+      
+      .login-btn:hover::before {
+        left: 100%;
+      }
+      
+      .login-footer {
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 1px solid #e1e5e9;
+        color: #666;
+        font-size: 14px;
+      }
+      
+      .login-footer strong {
+        color: #471396;
+      }
+      
+      /* BIP NET Logo Styles */
+      .bip-logo {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 20px;
+      }
+      
+      .bip-logo img {
+        max-height: 80px;
+        width: auto;
+        filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+        transition: transform 0.3s ease;
+      }
+      
+      .bip-logo img:hover {
+        transform: scale(1.05);
+      }
+      
+      .main-logo img {
+        max-height: 120px;
+        width: auto;
+      }
+      
+      .login-logo img {
+        max-height: 60px;
+        width: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Video Background -->
+    <video class="video-background" autoplay muted loop playsinline>
+      <source src="/videos/fondo.mp4" type="video/mp4">
+      Tu navegador no soporta videos HTML5.
+    </video>
+    <div class="video-overlay"></div>
+    
+    <button class="logout-btn hidden" id="logoutBtn" onclick="logout()">🚪 </button>
+    <div class="container">
+      <div class="bip-logo main-logo">
+        <img src="/images/bp.png" alt="BIP NET Logo" />
+      </div>
+      <!--<h2 style="color: white; text-align: center; margin-bottom: 30px; font-size: 2.5em; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">📄 Gestor de Documentos</h2>-->
+
+      <div class="card" id="loginCard">
+        <div class="bip-logo login-logo">
+          <img src="/images/bp.png" alt="BIP NET Logo" />
+        </div>
+        <h3>🔐 Iniciar Sesión</h3>
+        <div class="login-form">
+          <div class="input-group">
+            <label>Usuario</label>
+            <input id="username" placeholder="Ingresa tu usuario" />
+          </div>
+          <div class="input-group">
+            <label>Contraseña</label>
+            <input id="password" type="password" placeholder="Ingresa tu contraseña" />
+          </div>
+          <button id="btnLogin" class="login-btn">🚀 Acceder</button>
+        </div>
+        <div id="loginMsg" class="msg error hidden"></div>
+        <div class="login-footer">
+          <p>Credenciales por defecto:</p>
+          <p><strong>Usuario:</strong> admin | <strong>Contraseña:</strong> admin123</p>
+        </div>
+      </div>
+
+    <div class="card hidden" id="formCard">
+      <h3>Nuevo Documento</h3>
+      <div class="row">
+        <div>
+          <label>Destinatario</label>
+          <input id="destinatario" />
+        </div>
+        <div>
+          <label>Origen</label>
+          <input id="origen" />
+        </div>
+        <div>
+          <label>Fecha</label>
+          <input id="fecha" type="date" />
+        </div>
+        <div>
+          <label>Lugar</label>
+          <input id="lugar" />
+        </div>
+      </div>
+      <div>
+        <label>Motivo</label>
+        <textarea id="motivo" rows="3"></textarea>
+      </div>
+      <div id="dropzone">Arrastra archivos aquí o haz clic para seleccionar</div>
+      <input id="fileInput" type="file" multiple class="hidden" />
+      <div id="fileList"></div>
+      <button id="btnGuardar">Guardar</button>
+      <div id="formMsg" class="msg success hidden"></div>
+    </div>
+
+    <div class="card hidden" id="listCard">
+      <h3>Listado</h3>
+      <div class="row">
+        <div>
+          <label>Filtrar por Destinatario</label>
+          <input id="fDestinatario" />
+        </div>
+        <div>
+          <label>Filtrar por Lugar</label>
+          <input id="fLugar" />
+        </div>
+        <div>
+          <label>Desde</label>
+          <input id="fDesde" type="date" />
+        </div>
+        <div>
+          <label>Hasta</label>
+          <input id="fHasta" type="date" />
+        </div>
+      </div>
+      <button id="btnFiltrar">Buscar</button>
+      <div style="overflow:auto; max-height: 400px; margin-top:10px;">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Destinatario</th>
+              <th>Origen</th>
+              <th>Fecha</th>
+              <th>Lugar</th>
+              <th>Motivo</th>
+              <th>Archivos</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </div>
+    </div>
+
+    <script type="module">
+      const apiBase = '';
+      const tokenKey = 'doc_token';
+
+      // Video Background Setup
+      document.addEventListener('DOMContentLoaded', function() {
+        const video = document.querySelector('.video-background');
+        if (video) {
+          video.play().catch(e => {
+            console.log('Video autoplay failed:', e);
+            // Fallback: try to play on user interaction
+            document.addEventListener('click', () => {
+              video.play().catch(console.log);
+            }, { once: true });
+          });
+        }
+      });
+
+      const qs = (s) => document.querySelector(s);
+      const loginCard = qs('#loginCard');
+      const formCard = qs('#formCard');
+      const listCard = qs('#listCard');
+
+      function setLoggedIn(logged) {
+        loginCard.classList.toggle('hidden', logged);
+        formCard.classList.toggle('hidden', !logged);
+        listCard.classList.toggle('hidden', !logged);
+        qs('#logoutBtn').classList.toggle('hidden', !logged);
+      }
+
+      // Init state
+      if (localStorage.getItem(tokenKey)) setLoggedIn(true);
+
+      // Login
+      qs('#btnLogin').addEventListener('click', async () => {
+        const username = qs('#username').value.trim();
+        const password = qs('#password').value;
+        const msgEl = qs('#loginMsg');
+        msgEl.textContent = '';
+        msgEl.className = 'msg error hidden';
+        try {
+          const res = await fetch(apiBase + '/api/auth/login', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.message || 'Error de login');
+          localStorage.setItem(tokenKey, data.token);
+          setLoggedIn(true);
+          await loadList();
+        } catch (e) {
+          msgEl.textContent = e.message;
+          msgEl.className = 'msg error';
+        }
+      });
+
+      // Drag & Drop
+      const dropzone = qs('#dropzone');
+      const fileInput = qs('#fileInput');
+      let currentFiles = [];
+      function refreshFileList() {
+        const list = currentFiles.map(f => `- ${f.name} (${Math.round(f.size/1024)} KB)`).join('\n');
+        qs('#fileList').textContent = list;
+      }
+      dropzone.addEventListener('click', () => fileInput.click());
+      dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.style.background = '#f3f6ff'; });
+      dropzone.addEventListener('dragleave', () => { dropzone.style.background = 'transparent'; });
+      dropzone.addEventListener('drop', (e) => {
+        e.preventDefault(); dropzone.style.background = 'transparent';
+        currentFiles.push(...e.dataTransfer.files);
+        refreshFileList();
+      });
+      fileInput.addEventListener('change', () => {
+        currentFiles.push(...fileInput.files);
+        refreshFileList();
+        fileInput.value = '';
+      });
+
+      // Guardar
+      qs('#btnGuardar').addEventListener('click', async () => {
+        const fd = new FormData();
+        fd.append('destinatario', qs('#destinatario').value.trim());
+        fd.append('origen', qs('#origen').value.trim());
+        fd.append('fecha', qs('#fecha').value);
+        fd.append('lugar', qs('#lugar').value.trim());
+        fd.append('motivo', qs('#motivo').value.trim());
+        for (const f of currentFiles) fd.append('files', f);
+        const msgEl = qs('#formMsg');
+        msgEl.textContent = '';
+        msgEl.className = 'msg success hidden';
+        try {
+          const res = await fetch(apiBase + '/api/documents', {
+            method: 'POST',
+            headers: { Authorization: 'Bearer ' + localStorage.getItem(tokenKey) },
+            body: fd
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.message || 'Error al guardar');
+          msgEl.textContent = '✅ Documento guardado con ID ' + data.id;
+          msgEl.className = 'msg success';
+          currentFiles = []; refreshFileList();
+          // limpiar campos
+          ['#destinatario','#origen','#fecha','#lugar','#motivo'].forEach(sel => qs(sel).value = '');
+          await loadList();
+        } catch (e) {
+          msgEl.textContent = '❌ ' + e.message;
+          msgEl.className = 'msg error';
+        }
+      });
+
+      // Listado y filtros
+      async function loadList() {
+        const params = new URLSearchParams();
+        const de = qs('#fDestinatario').value.trim(); if (de) params.set('destinatario', de);
+        const l = qs('#fLugar').value.trim(); if (l) params.set('lugar', l);
+        const d = qs('#fDesde').value; if (d) params.set('desde', d);
+        const h = qs('#fHasta').value; if (h) params.set('hasta', h);
+        const res = await fetch(apiBase + '/api/documents?' + params.toString(), {
+          headers: { Authorization: 'Bearer ' + localStorage.getItem(tokenKey) }
+        });
+        if (!res.ok) return;
+        const rows = await res.json();
+        const tbody = qs('#tbody');
+        tbody.innerHTML = '';
+        for (const r of rows) {
+          const tr = document.createElement('tr');
+          const files = Array.isArray(r.files) ? r.files : JSON.parse(r.files || '[]');
+          tr.innerHTML = `
+            <td><strong>#${r.id}</strong></td>
+            <td>${r.destinatario || ''}</td>
+            <td>${r.origen || ''}</td>
+            <td>${r.fecha || ''}</td>
+            <td>${r.lugar || ''}</td>
+            <td>${r.motivo || ''}</td>
+            <td>${files.map(f => `<a href="/uploads/${f.filename}" target="_blank" class="file-link">📎 ${f.original_name}</a>`).join('<br/>')}</td>
+            <td>
+              <div class="actions">
+                <button class="btn-danger" onclick="deleteDocument(${r.id})">🗑️ Eliminar</button>
+              </div>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        }
+      }
+
+      // Eliminar documento
+      window.deleteDocument = async function(id) {
+        if (!confirm('¿Estás seguro de que quieres eliminar este documento?')) return;
+        try {
+          const res = await fetch(apiBase + '/api/documents/' + id, {
+            method: 'DELETE',
+            headers: { Authorization: 'Bearer ' + localStorage.getItem(tokenKey) }
+          });
+          if (!res.ok) throw new Error('Error al eliminar');
+          await loadList();
+          alert('✅ Documento eliminado correctamente');
+        } catch (e) {
+          alert('❌ Error: ' + e.message);
+        }
+      }
+      qs('#btnFiltrar').addEventListener('click', loadList);
+      if (localStorage.getItem(tokenKey)) loadList();
+
+      // Logout function
+      window.logout = function() {
+        if (confirm('¿Estás seguro de que quieres cerrar sesión?')) {
+          localStorage.removeItem(tokenKey);
+          setLoggedIn(false);
+          // Limpiar formularios
+          ['#username', '#password', '#destinatario', '#origen', '#fecha', '#lugar', '#motivo', '#fDestinatario', '#fLugar', '#fDesde', '#fHasta'].forEach(sel => qs(sel).value = '');
+          currentFiles = []; refreshFileList();
+        }
+      }
+    </script>
+  </body>
+  </html>
+
+
