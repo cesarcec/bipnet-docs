@@ -94,6 +94,15 @@
       .btn-danger:hover {
         box-shadow: 0 4px 12px rgba(255, 71, 87, 0.4);
       }
+      .btn-edit {
+        background: linear-gradient(135deg, #B13BFF 0%, #471396 100%);
+        padding: 8px 16px;
+        font-size: 12px;
+        margin-right: 8px;
+      }
+      .btn-edit:hover {
+        box-shadow: 0 4px 12px rgba(177, 59, 255, 0.4);
+      }
       #dropzone { 
         border: 3px dashed #B13BFF; 
         border-radius: 12px; 
@@ -115,7 +124,67 @@
         background: #f8f9fa;
         padding: 12px;
         border-radius: 8px;
-        white-space: pre-line;
+      }
+      
+      .file-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 12px;
+        margin: 4px 0;
+        background: white;
+        border-radius: 6px;
+        border: 1px solid #e1e5e9;
+        transition: all 0.2s;
+      }
+      
+      .file-item:hover {
+        background: #f7f3ff;
+        border-color: #B13BFF;
+      }
+      
+      .file-info {
+        display: flex;
+        align-items: center;
+        flex: 1;
+      }
+      
+      .file-icon {
+        margin-right: 8px;
+        font-size: 16px;
+      }
+      
+      .file-details {
+        flex: 1;
+      }
+      
+      .file-name {
+        font-weight: 500;
+        color: #333;
+        margin-bottom: 2px;
+      }
+      
+      .file-size {
+        font-size: 12px;
+        color: #666;
+      }
+      
+      .file-remove-btn {
+        background: linear-gradient(135deg, #ff4757 0%, #ff3742 100%);
+        color: white;
+        border: none;
+        padding: 4px 8px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 600;
+        transition: all 0.2s;
+        margin-left: 8px;
+      }
+      
+      .file-remove-btn:hover {
+        transform: scale(1.05);
+        box-shadow: 0 2px 8px rgba(255, 71, 87, 0.3);
       }
       .hidden { display: none; }
       table { 
@@ -329,9 +398,9 @@
 
       <div class="card" id="loginCard">
         <div class="bip-logo login-logo">
-          <img src="/images/bp.png" alt="BIP NET Logo" />
+          <!--<img src="/images/bp.png" alt="BIP NET Logo" />-->
         </div>
-        <h3>🔐 Iniciar Sesión</h3>
+        <h3>🔒 Iniciar Sesión</h3>
         <div class="login-form">
           <div class="input-group">
             <label>Usuario</label>
@@ -341,7 +410,7 @@
             <label>Contraseña</label>
             <input id="password" type="password" placeholder="Ingresa tu contraseña" />
           </div>
-          <button id="btnLogin" class="login-btn">🚀 Acceder</button>
+          <button id="btnLogin" class="login-btn">Iniciar sesión aquí!</button>
         </div>
         <div id="loginMsg" class="msg error hidden"></div>
         <div class="login-footer">
@@ -379,6 +448,37 @@
       <div id="fileList"></div>
       <button id="btnGuardar">Guardar</button>
       <div id="formMsg" class="msg success hidden"></div>
+    </div>
+
+    <div class="card hidden" id="editCard">
+      <h3>Editar Documento</h3>
+      <div class="row">
+        <div>
+          <label>Destinatario</label>
+          <input id="editDestinatario" />
+        </div>
+        <div>
+          <label>Origen</label>
+          <input id="editOrigen" />
+        </div>
+        <div>
+          <label>Fecha</label>
+          <input id="editFecha" type="date" />
+        </div>
+        <div>
+          <label>Lugar</label>
+          <input id="editLugar" />
+        </div>
+      </div>
+      <div>
+        <label>Motivo</label>
+        <textarea id="editMotivo" rows="3"></textarea>
+      </div>
+      <div style="display: flex; gap: 10px; margin-top: 20px;">
+        <button id="btnActualizar" class="login-btn">Actualizar</button>
+        <button id="btnCancelarEdit" class="btn-danger">Cancelar</button>
+      </div>
+      <div id="editMsg" class="msg success hidden"></div>
     </div>
 
     <div class="card hidden" id="listCard">
@@ -444,12 +544,19 @@
       const loginCard = qs('#loginCard');
       const formCard = qs('#formCard');
       const listCard = qs('#listCard');
+      const editCard = qs('#editCard');
 
       function setLoggedIn(logged) {
         loginCard.classList.toggle('hidden', logged);
         formCard.classList.toggle('hidden', !logged);
         listCard.classList.toggle('hidden', !logged);
+        editCard.classList.toggle('hidden', true);
         qs('#logoutBtn').classList.toggle('hidden', !logged);
+      }
+
+      function showEditModal(show) {
+        editCard.classList.toggle('hidden', !show);
+        listCard.classList.toggle('hidden', show);
       }
 
       // Init state
@@ -483,9 +590,64 @@
       const fileInput = qs('#fileInput');
       let currentFiles = [];
       function refreshFileList() {
-        const list = currentFiles.map(f => `- ${f.name} (${Math.round(f.size/1024)} KB)`).join('\n');
-        qs('#fileList').textContent = list;
+        const fileList = qs('#fileList');
+        fileList.innerHTML = '';
+        
+        if (currentFiles.length === 0) {
+          fileList.innerHTML = '<div style="text-align: center; color: #999; font-style: italic;">No hay archivos seleccionados</div>';
+          return;
+        }
+        
+        currentFiles.forEach((file, index) => {
+          const fileItem = document.createElement('div');
+          fileItem.className = 'file-item';
+          
+          const fileIcon = getFileIcon(file.name);
+          const fileSize = Math.round(file.size / 1024);
+          
+          fileItem.innerHTML = `
+            <div class="file-info">
+              <span class="file-icon">${fileIcon}</span>
+              <div class="file-details">
+                <div class="file-name">${file.name}</div>
+                <div class="file-size">${fileSize} KB</div>
+              </div>
+            </div>
+            <button class="file-remove-btn" onclick="removeFile(${index})">✕ Eliminar</button>
+          `;
+          
+          fileList.appendChild(fileItem);
+        });
       }
+      
+      function getFileIcon(fileName) {
+        const ext = fileName.split('.').pop().toLowerCase();
+        const iconMap = {
+          'pdf': '📄',
+          'doc': '📝',
+          'docx': '📝',
+          'txt': '📄',
+          'jpg': '🖼️',
+          'jpeg': '🖼️',
+          'png': '🖼️',
+          'gif': '🖼️',
+          'zip': '📦',
+          'rar': '📦',
+          'xlsx': '📊',
+          'xls': '📊',
+          'ppt': '📊',
+          'pptx': '📊'
+        };
+        return iconMap[ext] || '📎';
+      }
+      
+      function removeFile(index) {
+        currentFiles.splice(index, 1);
+        refreshFileList();
+      }
+      
+      // Hacer la función removeFile disponible globalmente
+      window.removeFile = removeFile;
       dropzone.addEventListener('click', () => fileInput.click());
       dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.style.background = '#f3f6ff'; });
       dropzone.addEventListener('dragleave', () => { dropzone.style.background = 'transparent'; });
@@ -559,6 +721,7 @@
             <td>${files.map(f => `<a href="/uploads/${f.filename}" target="_blank" class="file-link">📎 ${f.original_name}</a>`).join('<br/>')}</td>
             <td>
               <div class="actions">
+                <button class="btn-edit" onclick="editDocument(${r.id})">✏️ Editar</button>
                 <button class="btn-danger" onclick="deleteDocument(${r.id})">🗑️ Eliminar</button>
               </div>
             </td>
@@ -566,6 +729,92 @@
           tbody.appendChild(tr);
         }
       }
+
+      // Editar documento
+      window.editDocument = async function(id) {
+        try {
+          // Obtener datos del documento
+          const res = await fetch(apiBase + '/api/documents', {
+            headers: { Authorization: 'Bearer ' + localStorage.getItem(tokenKey) }
+          });
+          if (!res.ok) throw new Error('Error al cargar documentos');
+          const documents = await res.json();
+          const document = documents.find(d => d.id == id);
+          
+          if (!document) {
+            alert('❌ Documento no encontrado');
+            return;
+          }
+          
+          // Llenar formulario de edición
+          qs('#editDestinatario').value = document.destinatario || '';
+          qs('#editOrigen').value = document.origen || '';
+          qs('#editFecha').value = document.fecha || '';
+          qs('#editLugar').value = document.lugar || '';
+          qs('#editMotivo').value = document.motivo || '';
+          
+          // Guardar ID del documento para actualización
+          editCard.dataset.documentId = id;
+          
+          // Mostrar modal de edición
+          showEditModal(true);
+        } catch (e) {
+          alert('❌ Error: ' + e.message);
+        }
+      }
+
+      // Actualizar documento
+      qs('#btnActualizar').addEventListener('click', async () => {
+        const documentId = editCard.dataset.documentId;
+        if (!documentId) return;
+        
+        const destinatario = qs('#editDestinatario').value.trim();
+        const origen = qs('#editOrigen').value.trim();
+        const fecha = qs('#editFecha').value;
+        const lugar = qs('#editLugar').value.trim();
+        const motivo = qs('#editMotivo').value.trim();
+        
+        if (!destinatario || !origen || !fecha || !lugar) {
+          alert('❌ Por favor completa todos los campos obligatorios');
+          return;
+        }
+        
+        const msgEl = qs('#editMsg');
+        msgEl.textContent = '';
+        msgEl.className = 'msg success hidden';
+        
+        try {
+          const res = await fetch(apiBase + '/api/documents/' + documentId, {
+            method: 'PUT',
+            headers: { 
+              'Content-Type': 'application/json',
+              Authorization: 'Bearer ' + localStorage.getItem(tokenKey) 
+            },
+            body: JSON.stringify({ destinatario, origen, fecha, lugar, motivo })
+          });
+          
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.message || 'Error al actualizar');
+          
+          msgEl.textContent = '✅ Documento actualizado correctamente';
+          msgEl.className = 'msg success';
+          
+          // Recargar lista y volver al listado
+          setTimeout(async () => {
+            await loadList();
+            showEditModal(false);
+          }, 1500);
+          
+        } catch (e) {
+          msgEl.textContent = '❌ ' + e.message;
+          msgEl.className = 'msg error';
+        }
+      });
+
+      // Cancelar edición
+      qs('#btnCancelarEdit').addEventListener('click', () => {
+        showEditModal(false);
+      });
 
       // Eliminar documento
       window.deleteDocument = async function(id) {

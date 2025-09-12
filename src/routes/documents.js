@@ -118,6 +118,41 @@ router.get(
   }
 );
 
+// Update document
+router.put(
+  '/:id',
+  authMiddleware,
+  body('destinatario').isString().notEmpty(),
+  body('origen').isString().notEmpty(),
+  body('fecha').isISO8601().toDate(),
+  body('lugar').isString().notEmpty(),
+  body('motivo').isString().optional({ nullable: true }),
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+    
+    const { id } = req.params;
+    const { destinatario, origen, fecha, lugar, motivo } = req.body;
+    const pool = getPool();
+    
+    try {
+      const [result] = await pool.query(
+        'UPDATE documents SET destinatario = ?, origen = ?, fecha = ?, lugar = ?, motivo = ? WHERE id = ?',
+        [destinatario, origen, fecha, lugar, motivo || null, id]
+      );
+      
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ message: 'Documento no encontrado' });
+      }
+      
+      res.json({ message: 'Documento actualizado correctamente' });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: 'Error al actualizar el documento' });
+    }
+  }
+);
+
 // Delete document
 router.delete('/:id', authMiddleware, async (req, res) => {
   const { id } = req.params;
